@@ -1,2 +1,2 @@
 # topictap-client
-Seamless Kafka client that reads from topictap backups preferentially
+[![CircleCI](https://circleci.com/gh/arbor/topictap-client.svg?style=svg)](https://circleci.com/gh/arbor/topictap-client)

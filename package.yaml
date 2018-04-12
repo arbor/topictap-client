@@ -1,0 +1,60 @@
+name:                topictap-client
+version:             0.1.0.0
+github:              "arbor/topictap-client"
+license:             BSD3
+author:              "Tyler Durden"
+maintainer:          "tyler.durden@arbor.net"
+copyright:           "2018 Tyler Durden"
+
+extra-source-files:
+- README.md
+- ChangeLog.md
+
+# Metadata used when publishing your package
+# synopsis:            Short description of your package
+# category:            Web
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on Github at <https://github.com/newhoggy/topictap-client#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+- amazonka
+- amazonka-core
+- amazonka-s3
+- amazonka-dynamodb
+- hw-conduit
+- hw-kafka-avro
+- hw-kafka-client
+- hw-kafka-conduit
+
+library:
+  source-dirs: src
+
+executables:
+  topictap-client-exe:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - topictap-client
+
+tests:
+  topictap-client-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - hedgehog
+    - hspec
+    - hw-hedgehog
+    - hw-hspec-hedgehog
+    - topictap-client
