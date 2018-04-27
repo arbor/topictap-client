@@ -23,12 +23,16 @@ dependencies:
 - base >= 4.7 && < 5
 - amazonka
 - amazonka-core
-- amazonka-s3
 - amazonka-dynamodb
+- amazonka-s3
+- bytestring
 - hw-conduit
 - hw-kafka-avro
 - hw-kafka-client
 - hw-kafka-conduit
+- mtl
+- text
+- transformers
 
 library:
   source-dirs: src
