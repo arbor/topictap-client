@@ -1,6 +1,7 @@
 module Arbor.TopicTap.TConsumer
 ( TConsumer
 , createConsumer
+, closeConsumer
 )
 where
 
@@ -8,7 +9,7 @@ import Control.Arrow          (left)
 import Control.Monad          (mapM)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.ByteString        (ByteString)
-import Data.IORef             (IORef, newIORef)
+import Data.IORef             (IORef, newIORef, readIORef)
 import Data.Monoid            ((<>))
 import Kafka.Consumer         (ConsumerGroupId, ConsumerRecord, KafkaConsumer, RebalanceEvent, Timeout, TopicName, TopicPartition)
 
@@ -27,18 +28,26 @@ data TC m = TC
   , commitAllOffsets :: m (Maybe TopicTapError)
   }
 
--- | Creates a new TopicTap consumer
+-- | Creates a new TopicTap consumer.
+-- The consumer is expected to be closed with 'closeConsumer` function.
 createConsumer :: MonadIO m
-           => KafkaConfig
-           -> TopicName
-           -> ConsumerGroupId
-           -> (RebalanceEvent -> IO ())
-           -> m (Either TopicTapError (TConsumer m))
+               => KafkaConfig
+               -> TopicName
+               -> ConsumerGroupId
+               -> (RebalanceEvent -> IO ())
+               -> m (Either TopicTapError (TConsumer m))
 createConsumer conf topic cgroup onRebalance = do
-  kafka <- mkKafkaConsumer conf topic cgroup onRebalance
+  kafka <- createKafkaConsumer conf topic cgroup onRebalance
   mapM (mkTConsumer (_kcPollTimeoutMs conf) ) kafka
 
-
+-- | Closes the TopicTap consumer.
+closeConsumer :: MonadIO m => TConsumer m -> m (Maybe TopicTapError)
+closeConsumer (TConsumer kafka iotc) = do
+  tc <- liftIO $ readIORef iotc
+  tcErr <- close tc
+  case tcErr of
+    Just err -> pure (Just err)
+    Nothing  -> closeKafkaConsumer kafka
 -------------------------------------------------------------------------------
 mkTConsumer :: MonadIO m => Timeout -> KafkaConsumer -> m (TConsumer m)
 mkTConsumer timeout consumer =
