@@ -30,12 +30,19 @@ dependencies:
 - hw-kafka-avro
 - hw-kafka-client
 - hw-kafka-conduit
+- lens
 - mtl
 - text
 - transformers
 
 library:
   source-dirs: src
+  ghc-options:
+  - -Wall
+  - -Wcompat
+  - -Wincomplete-record-updates
+  - -Wincomplete-uni-patterns
+  - -Wredundant-constraints
 
 executables:
   topictap-client:
