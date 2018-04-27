@@ -18,11 +18,6 @@ BUILD_HASH=$(git rev-list --count HEAD) && ${FORK_BUILD} && BUILD_HASH="${BUILD_
 IMAGE_NAME=${BUILD_BINTRAY}/${BUILD_NAME}_${BUILD_VERSION}
 BUILD_TAG=${IMAGE_NAME}:${BUILD_HASH}
 
-_bintray_url="https://arbornetworks.bintray.com/maven-private/"
-_bintray_username="$(grep '^user\>' "$HOME/.bintray/.credentials" | cut -d = -f 2 | xargs)"
-_bintray_password="$(grep '^password\>' "$HOME/.bintray/.credentials" | cut -d = -f 2 | xargs)"
-_bintray_credentials="${_bintray_username}:${_bintray_password}"
-
 # check if login exists
 cat "${HOME}/.docker/config.json" | grep "\"${BUILD_BINTRAY}\"" > /dev/null
 if [ $? -ne 0 ]; then
@@ -34,7 +29,7 @@ fi
 case $1 in
   dev-build)
     set -e
-    _image="fpco/stack-build:latest"
+    _image="quay.io/haskell_works/stack-build-cabal"
     docker run --rm -v $PWD:/bld -it $_image bash -c "cd /bld && ./scripts/build-librdkafka.sh"
     echo "Building the project"
     stack --docker \
