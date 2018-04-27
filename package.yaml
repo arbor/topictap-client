@@ -34,7 +34,7 @@ library:
   source-dirs: src
 
 executables:
-  topictap-client-exe:
+  topictap-client:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
@@ -42,6 +42,7 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
+    - optparse-applicative
     - topictap-client
 
 tests:
