@@ -1,4 +1,7 @@
 module Arbor.TopicTap.Kafka
+( createKafkaConsumer
+, closeKafkaConsumer
+)
 where
 
 import Control.Arrow          (left)
@@ -13,13 +16,13 @@ import qualified Kafka.Consumer as K
 import Arbor.TopicTap.Error   (TopicTapError (..))
 import Arbor.TopicTap.Options (KafkaConfig (..))
 
-mkKafkaConsumer :: MonadIO m
-                => KafkaConfig
-                -> TopicName
-                -> ConsumerGroupId
-                -> (RebalanceEvent -> IO ())
-                -> m (Either TopicTapError KafkaConsumer)
-mkKafkaConsumer conf topic cgroup onRebalance =
+createKafkaConsumer :: MonadIO m
+                    => KafkaConfig
+                    -> TopicName
+                    -> ConsumerGroupId
+                    -> (RebalanceEvent -> IO ())
+                    -> m (Either TopicTapError KafkaConsumer)
+createKafkaConsumer conf topic cgroup onRebalance =
   let
     props =  K.brokersList [_kcBroker conf]
           <> K.groupId cgroup
@@ -29,3 +32,7 @@ mkKafkaConsumer conf topic cgroup onRebalance =
     sub = K.topics [topic]
   in left KafkaErr <$> K.newConsumer props sub
 
+
+closeKafkaConsumer :: MonadIO m => KafkaConsumer -> m (Maybe TopicTapError)
+closeKafkaConsumer consumer =
+  fmap (fmap KafkaErr) (K.closeConsumer consumer)
