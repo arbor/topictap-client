@@ -39,11 +39,11 @@ packages:
 - .
 
 extra-deps:
-- avro-0.2.1.1
+- avro-0.3.0.1
 - hedgehog-0.5.3
 - hw-kafka-avro-1.4.0
-- hw-kafka-client-2.4.3
-- hw-kafka-conduit-2.4.0
-- hw-hspec-hedgehog-0.1.0.3
+- hw-kafka-client-2.5.0
+- hw-kafka-conduit-2.5.0
+- hw-hspec-hedgehog-0.1.0.4
 - hw-conduit-0.2.0.3
 - pure-zlib-0.6.2
