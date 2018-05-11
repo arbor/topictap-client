@@ -1,16 +1,29 @@
 {-# LANGUAGE NamedFieldPuns #-}
 module Arbor.TopicTap.TConsumer
-( TConsumer
-, createConsumer
-, closeConsumer
+(
+-- | Exported types
+  TConsumer
+, ConsumerGroupId(..)
+, KafkaConfig
+, ConsumerRecord(..)
+, Timeout
+, RebalanceEvent(..)
+, TopicName(..)
+, TopicPartition(..)
+, TopicTapError(..)
+-- | Consumer operations
+, createConsumer, closeConsumer
+, storeOffsets, storeMessageOffset
+, commitOffsets
+, poll
 )
 where
 
 import Control.Arrow          (left)
-import Control.Monad          (mapM)
+import Control.Monad          (mapM, void)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.ByteString        (ByteString)
-import Data.IORef             (IORef, newIORef, readIORef)
+import Data.IORef             (IORef, newIORef, readIORef, writeIORef)
 import Data.Monoid            ((<>))
 import Kafka.Consumer         (ConsumerGroupId, ConsumerRecord, KafkaConsumer, RebalanceEvent, Timeout, TopicName, TopicPartition)
 
@@ -26,7 +39,7 @@ data TConsumer m = TConsumer
   }
 
 data TC m = TC
-  { pollMessage :: m (Either TopicTapError (ConsumerRecord (Maybe ByteString) (Maybe ByteString)))
+  { pollMessage :: Timeout -> m (Either TopicTapError (ConsumerRecord (Maybe ByteString) (Maybe ByteString)))
   , close       :: m (Maybe TopicTapError)
   }
 
@@ -40,7 +53,7 @@ createConsumer :: MonadIO m
                -> m (Either TopicTapError (TConsumer m))
 createConsumer conf topic cgroup onRebalance = do
   kafka <- createKafkaConsumer conf topic cgroup onRebalance
-  mapM (mkTConsumer (_kcPollTimeoutMs conf)) kafka
+  mapM mkTConsumer kafka
 
 -- | Closes the TopicTap consumer.
 closeConsumer :: MonadIO m => TConsumer m -> m (Maybe TopicTapError)
@@ -75,13 +88,42 @@ commitOffsets :: MonadIO m
 commitOffsets TConsumer{tcKafka} =
   fmap KafkaErr <$> K.commitAllOffsets K.OffsetCommit tcKafka
 
--------------------------------------------------------------------------------
-mkTConsumer :: MonadIO m => Timeout -> KafkaConsumer -> m (TConsumer m)
-mkTConsumer timeout consumer =
-  liftIO $ TConsumer consumer <$> newIORef (kafkaTC timeout consumer)
+-- | Polls one message from the consumer.
+poll :: MonadIO m
+     => TConsumer m
+     -> Timeout
+     -> m (Either TopicTapError (ConsumerRecord (Maybe ByteString) (Maybe ByteString)))
+poll consumer@TConsumer{tcKafka, tcFuncs} timeout = do
+  emsg <- liftIO (readIORef tcFuncs) >>= flip pollMessage timeout
+  case emsg of
+    Right msg        -> pure (Right msg)
+    Left EndOfBackup ->
+      -- Perform switch, but propagate end of backup to the client
+      switchToKafka consumer >> pure (Left EndOfBackup)
+    Left err         -> pure (Left err)
 
-kafkaTC :: MonadIO m => Timeout -> KafkaConsumer -> TC m
-kafkaTC timeout consumer = TC
-  { pollMessage       = left KafkaErr <$> K.pollMessage consumer timeout
-  , close             = pure Nothing
+-------------------------------------------------------------------------------
+switchToKafka :: MonadIO m => TConsumer m -> m (Either TopicTapError ())
+switchToKafka consumer = do
+  tc    <- liftIO (readIORef $ tcFuncs consumer)
+  clRes <- close tc
+  case clRes of
+    Just err -> pure (Left err)
+    Nothing  -> liftIO $ Right <$> writeIORef (tcFuncs consumer) (kafkaTC $ tcKafka consumer)
+
+mkTConsumer :: MonadIO m => KafkaConsumer -> m (TConsumer m)
+mkTConsumer consumer =
+  liftIO $ TConsumer consumer <$> newIORef backupTC
+
+-- Fake backup TC thing that always returns 'EndOfBackup' until implemented
+backupTC :: MonadIO m => TC m
+backupTC = TC
+  { pollMessage = const $ pure (Left EndOfBackup)
+  , close = pure Nothing
+  }
+
+kafkaTC :: MonadIO m => KafkaConsumer -> TC m
+kafkaTC consumer = TC
+  { pollMessage = fmap (left KafkaErr) . K.pollMessage consumer
+  , close       = pure Nothing
   }
